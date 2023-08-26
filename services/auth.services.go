@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aditansh/go-notes/cache"
 	config "github.com/aditansh/go-notes/config"
 	database "github.com/aditansh/go-notes/db"
 	"github.com/aditansh/go-notes/models"
@@ -16,13 +17,13 @@ import (
 
 func SignupUser(payload *models.RegisterUserSchema) error {
 
-	var user models.User
-	check1 := database.DB.Where("username = ?", payload.Username).First(&user)
-	if check1 != nil {
+	_, check1 := GetUserByUsername(payload.Username)
+	if check1 == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Username already exists")
 	}
-	check2 := database.DB.Where("email = ?", payload.Email).First(&user)
-	if check2 != nil {
+
+	_, check2 := GetUserByEmail(payload.Email)
+	if check2 == nil {
 		return fiber.NewError(fiber.StatusBadRequest, "Email already exists")
 	}
 
@@ -80,6 +81,11 @@ func LoginUser(payload *models.LoginUserSchema) (models.AuthResponse, error) {
 	if err != nil {
 		return models.AuthResponse{}, err
 	}
+	fmt.Println(user.ID)
+	errr := cache.SetValue(authResponse.RefreshToken, user.ID.String(), 0)
+	if errr != nil {
+		return models.AuthResponse{}, errr
+	}
 
 	return authResponse, nil
 }
@@ -136,15 +142,21 @@ func GenerateAuthTokens(user *models.User) (models.AuthResponse, error) {
 		return models.AuthResponse{}, err
 	}
 
-	refreshTokenEntry := models.RefreshToken{
-		UserID: user.ID,
-		Token:  refreshToken,
+	// Update refreshToken in NGO document
+	errr := cache.SetValue(refreshToken, user.ID.String(), 0)
+	if errr != nil {
+		return models.AuthResponse{}, errr
 	}
 
-	result := database.DB.Create(&refreshTokenEntry)
-	if result.Error != nil {
-		return models.AuthResponse{}, result.Error
-	}
+	// refreshTokenEntry := models.RefreshToken{
+	// 	UserID: user.ID,
+	// 	Token:  refreshToken,
+	// }
+
+	// result := database.DB.Create(&refreshTokenEntry)
+	// if result.Error != nil {
+	// 	return models.AuthResponse{}, result.Error
+	// }
 
 	authResponse := models.AuthResponse{
 		UserID:       user.ID,
@@ -161,6 +173,18 @@ func RefreshAccessToken(refreshToken string) (models.AuthResponse, *fiber.Error)
 	if err != nil {
 		return models.AuthResponse{}, fiber.NewError(fiber.StatusInternalServerError, "Internal Server Error")
 	}
+
+	// id, err := cache.GetValue(refreshToken)
+	// if err != nil {
+	// 	return models.AuthResponse{}, fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+	// }
+
+	// userID, err := uuid.Parse(id)
+	// if err != nil {
+	// 	return models.AuthResponse{}, fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+	// }
+
+	// user, err := GetUserById(userID)
 
 	user, err := GetUserByRefreshToken(refreshToken)
 	if err != nil {
@@ -179,7 +203,7 @@ func RefreshAccessToken(refreshToken string) (models.AuthResponse, *fiber.Error)
 	if !ok {
 		return models.AuthResponse{}, fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
 	}
-	
+
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil || userID != user.ID {
 		return models.AuthResponse{}, fiber.NewError(fiber.StatusUnauthorized, "Invalid token")

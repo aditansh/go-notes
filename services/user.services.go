@@ -1,8 +1,10 @@
 package services
 
 import (
+	"github.com/aditansh/go-notes/cache"
 	database "github.com/aditansh/go-notes/db"
 	"github.com/aditansh/go-notes/models"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
@@ -37,14 +39,21 @@ func GetUserById(id uuid.UUID) (models.User, error) {
 }
 
 func GetUserByRefreshToken(refreshToken string) (models.User, error) {
-	var token models.RefreshToken
-	result := database.DB.Where("token = ?", refreshToken).First(&token)
-	if result.Error != nil {
-		return models.User{}, result.Error
+
+	id, err := cache.GetValue(refreshToken)
+	// fmt.Println(id)
+	// fmt.Println(err)
+	if err != nil {
+		return models.User{}, fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
+	}
+
+	userID, err := uuid.Parse(id)
+	if err != nil {
+		return models.User{}, fiber.NewError(fiber.StatusUnauthorized, "Invalid token")
 	}
 
 	var user models.User
-	result = database.DB.Where("id = ?", token.UserID).First(&user)
+	result := database.DB.Where("id = ?", userID).First(&user)
 	if result.Error != nil {
 		return models.User{}, result.Error
 	}

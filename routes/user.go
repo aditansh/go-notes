@@ -16,7 +16,7 @@ func UserRoutes(app *fiber.App) {
 	// user.Get("/findall", controllers.FindAllUsers)
 	// user.Get("/find/:id", controllers.FindUser)
 	user.Post("/refresh", controllers.RefreshToken)
-	user.Get("/logout", middleware.ValidateToken, controllers.LogoutUser)
+	user.Post("/logout", middleware.ValidateToken, controllers.LogoutUser)
 	user.Post("/update", middleware.ValidateToken, controllers.UpdateUser)
 	user.Delete("/delete", middleware.ValidateToken, controllers.DeleteUser)
 	user.Get("/me", middleware.ValidateToken, controllers.Me)

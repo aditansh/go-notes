@@ -14,6 +14,17 @@ import (
 
 func main() {
 
+	// err := sentry.Init(sentry.ClientOptions{
+	// 	Dsn: os.Getenv("SENTRY_DSN"),
+	// 	// Set TracesSampleRate to 1.0 to capture 100%
+	// 	// of transactions for performance monitoring.
+	// 	// We recommend adjusting this value in production,
+	// 	TracesSampleRate: 1.0,
+	// })
+	// if err != nil {
+	// 	log.Fatalf("sentry.Init: %s", err)
+	// }
+
 	app := fiber.New()
 
 	config, err := initializers.LoadEnvVariables(".")

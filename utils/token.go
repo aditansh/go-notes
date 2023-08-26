@@ -19,7 +19,6 @@ func generateToken(userID uuid.UUID, secret string, expiry time.Duration, user *
 	})
 
 	return token.SignedString([]byte(secret))
-
 }
 
 func GenerateAccessToken(user *models.User) (string, error) {

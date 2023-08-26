@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github.com/aditansh/go-notes/cache"
 	database "github.com/aditansh/go-notes/db"
 	"github.com/aditansh/go-notes/models"
 	"github.com/aditansh/go-notes/services"
@@ -174,17 +175,22 @@ func RefreshToken(c *fiber.Ctx) error {
 
 func LogoutUser(c *fiber.Ctx) error {
 
-	userID := c.Locals("userID").(uuid.UUID)
+	type tokenRequest struct {
+		RefreshToken string `json:"refreshToken" validate:"required"`
+	}
 
-	result := database.DB.Delete(&models.RefreshToken{}, "user_id=?", userID)
-	if result.RowsAffected == 0 {
+	var payload tokenRequest
+	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  false,
-			"message": "User not logged in"})
-	} else if result.Error != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"message": "Bad Request"})
+	}
+
+	err := cache.DeleteValue(payload.RefreshToken)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  false,
-			"message": result.Error.Error()})
+			"message": err.Error()})
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
